@@ -24,6 +24,8 @@ output_dir = 'images/filtered/'
 
 # Averaging Filter
 a_filter = [[1.0 / 9.0] * 3] * 3
+# Larger Average Filter
+a_filter_large = [[1.0 / 49] * 7] * 7
 # Gaussian Filter
 g_filter = [
     [1.0 / 16.0, 2.0 / 16.0, 1.0 / 16.0],
@@ -53,25 +55,6 @@ es_filter = [
     [-2.0/9, -2.0/9, -2.0/9]
 ]
 
-def filter_2d(image_file, filter_2d):
-    image = Image.open(grayscale_dir + image_file)
-    output = Image.new(mode='L', size=(image.size[0], image.size[1]))
-    image_pixels = image.load()
-    output_pixels = output.load()
-
-    for i in range(image.size[0]):
-        for j in range(image.size[1]):
-            filter_sum = 0.0
-            for k in range(len(filter_2d)):
-                for l in range(len(filter_2d[0])):
-                    if i + k >= 0 and i + k < image.size[0] and j + l >= 0 and j + l < image.size[1]:
-                        filter_sum += image_pixels[i + k, j + l] * filter_2d[k][l]
-            output_pixels[i,j] = (int) (filter_sum)
-    output.save(output_dir + image_file)
-    
-    image.close()
-    output.close()
-
 def filter_2d_obj(image_obj, filter_2d):
     image_pixels = image.load()
     output = Image.new(mode='L', size=(image.size[0], image.size[1]))
@@ -87,15 +70,15 @@ def filter_2d_obj(image_obj, filter_2d):
             output_pixels[i,j] = (int) (filter_sum)
     return output
 
+
 start_time = time.time()
 print(f'Fetching from {image_dir}')
 for image_file in os.listdir(image_dir):
     image = Image.open(image_dir + image_file).convert('L')
     image.save(grayscale_dir + image_file)
 
-    # Running it through a gaussian filter first
+    image = filter_2d_obj(image, es_filter)
     image = filter_2d_obj(image, g_filter)
-    # Then sharpen
     image = filter_2d_obj(image, es_filter)
 
     image.save(output_dir + image_file)
