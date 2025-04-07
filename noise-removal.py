@@ -1,5 +1,5 @@
 """
-    Jesse Han
+    Jesse Han (Acting as Student 1)
     jesse.han53@myhunter.cuny.edu
     CSCI 39534 Project 3 - Retinal Fundus Images
     Noise Removal Portion
@@ -9,6 +9,8 @@
                https://www.researchgate.net/figure/Discrete-approximation-of-the-Gaussian-kernels-3x3-5x5-7x7_fig2_325768087
                Sharpening Images
                https://ai.stanford.edu/~syyeung/cvweb/tutorial1.html
+               calculate_EME.m, given from Lab 4
+               
 """
 
 from PIL import Image
@@ -55,6 +57,7 @@ es_filter = [
     [-2.0/9, -2.0/9, -2.0/9]
 ]
 
+# Applies a filter from a 2D array.
 def filter_2d_obj(image_obj, filter_2d):
     image_pixels = image.load()
     output = Image.new(mode='L', size=(image.size[0], image.size[1]))
@@ -69,6 +72,64 @@ def filter_2d_obj(image_obj, filter_2d):
                         filter_sum += image_pixels[i + k, j + l] * filter_2d[k][l]
             output_pixels[i,j] = (int) (filter_sum)
     return output
+
+# Entropy Measure of Enhancement. Reused from Lab 4. Sourced from the given calculcate_EME.m file
+def eme(image_file, split=10):
+    img = Image.open(image_dir + image_file).convert('L')
+    pixels = img.load()
+    width = img.size[0]
+    height = img.size[1]
+
+    # This code uses the given calculate_EME.m as a reference.
+    EME = 0
+    block_width = width // split
+    block_height = height // split
+
+    for k in range(1, split):
+        for l in range(1, split):
+            width_start = (k-1) * block_width 
+            width_end = k * block_width
+            height_start = (l-1) * block_height
+            height_end = l * block_height
+
+            if width_end > width:
+                width_end = width
+            if height_end > height:
+                height_end = height
+            i_max = 0
+            i_min = 255
+            for i in range(width_start, width_end):
+                for j in range(height_start, height_end):
+                    i_max = max(i_max, pixels[i,j])
+                    i_min = min(i_min, pixels[i,j])
+            i_min = 1 if i_min == 0 else i_min
+            EME += 20 * math.log(i_max / i_min)
+    EME = EME / (split * split)
+    return EME
+
+# First part reused from Lab 4.
+def linear_contrast_stretching(image_obj, t=127):
+    pixels = image_obj.load()
+    width = image.size[0]
+    height = image.size[1]
+    output = Image.new(mode='L', size=(width, height))
+    output_pixels = output.load()
+    i_min = 255
+    i_max = 0
+
+    for i in range(width):
+        for j in range(height):
+            i_min = min(i_min, pixels[i,j])
+            i_max = max(i_max, pixels[i,j])
+
+    for i in range(width):
+        for j in range(height):
+            if pixels[i,j] > t:
+                output_pixels[i,j] = (pixels[i,j] - t + 1) * ((float) (255 - t + 1) / (i_max - t + 1)) + t + 1
+            else:
+                output_pixels[i,j] = (pixels[i,j] - i_min) * ((float) (t) / (t - I_min))
+    return output
+            
 
 
 start_time = time.time()
