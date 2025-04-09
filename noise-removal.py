@@ -22,7 +22,7 @@ import os
 
 image_dir = 'images/original/'
 grayscale_dir = 'images/grayscale/'
-output_dir = 'images/filtered/'
+output_dir = 'student-1/'
 
 # Averaging Filter
 a_filter = [[1.0 / 9.0] * 3] * 3
@@ -75,7 +75,7 @@ def filter_2d_obj(image_obj, filter_2d):
 
 # Entropy Measure of Enhancement. Reused from Lab 4. Sourced from the given calculcate_EME.m file
 def eme(image_file, split=10):
-    img = Image.open(image_dir + image_file).convert('L')
+    img = image_file.copy()
     pixels = img.load()
     width = img.size[0]
     height = img.size[1]
@@ -109,7 +109,8 @@ def eme(image_file, split=10):
 
 # First part reused from Lab 4.
 def linear_contrast_stretching(image_obj, t=127):
-    pixels = image_obj.load()
+    image = image_obj.copy()
+    pixels = image.load()
     width = image.size[0]
     height = image.size[1]
     output = Image.new(mode='L', size=(width, height))
@@ -117,6 +118,7 @@ def linear_contrast_stretching(image_obj, t=127):
     i_min = 255
     i_max = 0
 
+    
     for i in range(width):
         for j in range(height):
             i_min = min(i_min, pixels[i,j])
@@ -125,23 +127,40 @@ def linear_contrast_stretching(image_obj, t=127):
     for i in range(width):
         for j in range(height):
             if pixels[i,j] > t:
-                output_pixels[i,j] = (pixels[i,j] - t + 1) * ((float) (255 - t + 1) / (i_max - t + 1)) + t + 1
+                output_pixels[i,j] = (int) ((pixels[i,j] - t + 1) * ((float) (255 - t + 1) / (i_max - t + 1)) + t + 1)
             else:
-                output_pixels[i,j] = (pixels[i,j] - i_min) * ((float) (t) / (t - I_min))
+                if (t - i_min) == 0:
+                    output_pixels[i,j] = (int) ((pixels[i,j] - i_min) * ((float) (t)))
+                else:
+                    output_pixels[i,j] = (int) ((pixels[i,j] - i_min) * ((float) (t) / (t - i_min)))
     return output
-            
-
 
 start_time = time.time()
+# Creating dict with {name: eme} as its entries
+image_files = dict.fromkeys(os.listdir(image_dir), [0] * 256)
+optimal_eme = dict.fromkeys(image_files, (-1, -1.0))
+
 print(f'Fetching from {image_dir}')
-for image_file in os.listdir(image_dir):
+
+for image_file in image_files:
+    # Grayscale + EME of original
     image = Image.open(image_dir + image_file).convert('L')
-    image.save(grayscale_dir + image_file)
+    image.save(f'{grayscale_dir}{image_file}')
+    image_files[image_file][0] = eme(image)
 
-    image = filter_2d_obj(image, es_filter)
-    image = filter_2d_obj(image, g_filter)
-    image = filter_2d_obj(image, es_filter)
+    # Applying linear contrast stretching with 
+    for i in range(1,256):
+        contrast_image = linear_contrast_stretching(image, i)
 
-    image.save(output_dir + image_file)
-    image.close()
+        contrast_eme = eme(contrast_image)
+        image_files[image_file][i] = contrast_eme
+        
+        # contrast_image.save(f"{output_dir}{image_file.split('.')[0]}/{str(i)}_{image_file}")
+        contrast_image.close()
+    print(f"{image_file} base EME: {image_files[image_file][0]}")
+    optimal_t = image_files[image_file].index(max(image_files[image_file]))
+    optimal_eme[image_file] = (optimal_t, max(image_files[image_file]))
+    contrast_image = linear_contrast_stretching(image, optimal_t).save(f"{output_dir}optimal-{str(optimal_t)}_{image_file}")
+        
 print(f'Process took: {time.time() - start_time:.4f} seconds!')
+print(optimal_eme)
