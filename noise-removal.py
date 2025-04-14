@@ -135,9 +135,41 @@ def linear_contrast_stretching(image_obj, t=127):
                     output_pixels[i,j] = (int) ((pixels[i,j] - i_min) * ((float) (t) / (t - i_min)))
     return output
 
+# Remake of the above function, intended to return a list of linear contrast stretching
+# of t=1 to 255
+def full_linear_contrast_stretching(image_obj):
+    image = image_obj.copy()
+    pixels = image.load()
+    width = image.size[0]
+    height = image.size[1]
+
+    outputs = [Image.new(mode='L', size=(width, height))] * 256
+    output_pixels = [output.load() for output in outputs]
+
+    i_min = 255
+    i_max = 0
+    for i in range(width):
+        for j in range(height):
+            i_min = min(i_min, pixels[i,j])
+            i_max = max(i_max, pixels[i,j])
+
+    for i in range(width):
+        for j in range(height):
+            for t in range(1, 256):
+                if pixels[i,j] > t:
+                    output_pixels[t][i,j] = (int) ((pixels[i,j] - t + 1) * ((float) (255 - t + 1) / (i_max - t + 1.0)) + t + 1)
+                else:
+                    if (t - i_min) == 0:
+                        output_pixels[t][i,j] = (int) ((pixels[i,j] - i_min) * ((float) (t)))
+                    else:
+                        output_pixels[t][i,j] = (int) ((pixels[i,j] - i_min) * ((float) (t) / (t - i_min)))
+    return outputs
+
+
 start_time = time.time()
-# Creating dict with {name: eme} as its entries
+# Creating dict with {name: (eme; t=1, 2, ..., 255)} as its entries
 image_files = dict.fromkeys(os.listdir(image_dir), [0] * 256)
+# Dict with {name: (optimal t, optimal_eme)}
 optimal_eme = dict.fromkeys(image_files, (-1, -1.0))
 
 print(f'Fetching from {image_dir}')
@@ -148,6 +180,15 @@ for image_file in image_files:
     image.save(f'{grayscale_dir}{image_file}')
     image_files[image_file][0] = eme(image)
 
+    linear_stretched = full_linear_contrast_stretching(image)
+
+    for i in range(1, 256):
+        contrast_image = linear_stretched[i]
+        print(f"{i} from linear_stretched, {linear_stretched[i].load()[100,100]}")
+        contrast_eme = eme(contrast_image)
+        image_files[image_file][i] = contrast_eme
+    
+    ''' Old code
     # Applying linear contrast stretching with 
     for i in range(1,256):
         contrast_image = linear_contrast_stretching(image, i)
@@ -157,10 +198,15 @@ for image_file in image_files:
         
         # contrast_image.save(f"{output_dir}{image_file.split('.')[0]}/{str(i)}_{image_file}")
         contrast_image.close()
+    '''
     print(f"{image_file} base EME: {image_files[image_file][0]}")
     optimal_t = image_files[image_file].index(max(image_files[image_file]))
     optimal_eme[image_file] = (optimal_t, max(image_files[image_file]))
-    contrast_image = linear_contrast_stretching(image, optimal_t).save(f"{output_dir}optimal-{str(optimal_t)}_{image_file}")
+    linear_stretched[optimal_t].save(f"{output_dir}optimal-{str(optimal_t)}_{image_file}")
+    print(f"{image_file} optimal t: {optimal_t} with eme {optimal_eme}")
+    print(f"{image_files[image_file]}")
+    for i in linear_stretched:
+        i.close()
         
 print(f'Process took: {time.time() - start_time:.4f} seconds!')
 print(optimal_eme)
