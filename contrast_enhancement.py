@@ -8,118 +8,104 @@
 
     t_optimum (image 1 - 11): 103, 183, 112, 97, 97, 121, 112, 74, 91, 101, 115
 """
+import os
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 
-image = Image.open('images/original/11_normal_fundus.jpeg')
-image_number = '11'
-image_np = np.array(image)
+# Stretch before saving to to ensure values are in [0, 255]
+def stretch_contrast(image):
+    I_min, I_max = image.min(), image.max()
+    if I_max - I_min == 0:
+        return np.zeros_like(image)
+    stretched = (image - I_min) * 255.0 / (I_max - I_min)
+    return stretched.astype(np.uint8)
 
-# Convert to gray = 0.299(R) + 0.587(G) + 0.114(B)
-gray = 0.299 * image_np[:, :, 0] + 0.587 * image_np[:, :, 1] + 0.114 * image_np[:, :, 2]
-gray = gray.astype(np.uint8)
+# t_optimum dictionary from student 1
+t_optimum_dict = {
+    "01": 103, "02": 183, "03": 112, "04": 97, "05": 97, "06": 121,
+    "07": 112, "08": 74, "09": 91, "10": 101, "11": 115
+}
 
-# Normalize each color channel
-epsilon = 1e-10
-added_rgb = (image_np[:, :, 0] + image_np[:, :, 1] + image_np[:, :, 2]).astype(np.float32) + epsilon
+input_folder = 'images/original/'
+for filename in sorted(os.listdir(input_folder)):
+    if filename.endswith(('.jpeg', '.jpg', '.png')):
+        image_path = os.path.join(input_folder, filename)
+        image = Image.open(image_path)
+        image_np = np.array(image)
+        image_number = filename.split('_')[0]
+        
+        # Convert to grayscale
+        gray = 0.299 * image_np[:, :, 0] + 0.587 * image_np[:, :, 1] + 0.114 * image_np[:, :, 2]
+        gray = gray.astype(np.uint8)
 
-r_normalized = image_np[:, :, 0].astype(np.float32) / added_rgb # (r/r+g+b)
-g_normalized = image_np[:, :, 1].astype(np.float32) / added_rgb # (g/r+g+b)
-b_normalized = image_np[:, :, 2].astype(np.float32) / added_rgb # (b/r+g+b)
+        # Normalize each color channel
+        epsilon = 1e-10
+        added_rgb = (image_np[:, :, 0] + image_np[:, :, 1] + image_np[:, :, 2]).astype(np.float32) + epsilon
+        r_normalized = image_np[:, :, 0].astype(np.float32) / added_rgb
+        g_normalized = image_np[:, :, 1].astype(np.float32) / added_rgb
+        b_normalized = image_np[:, :, 2].astype(np.float32) / added_rgb
 
-# Add together to create single-channel grayscale
-normalized_gray = (0.299 * r_normalized + 0.587 * g_normalized + 0.114 * b_normalized)
-normalized_gray = np.nan_to_num(normalized_gray, nan=0.0, posinf=1.0, neginf=0.0) 
-normalized_gray = np.clip(normalized_gray, 0, 1)
-normalized_image = (normalized_gray * 255).astype(np.uint8)
+        # Combine for single-channel normalized grayscale
+        normalized_gray = (0.299 * r_normalized + 0.587 * g_normalized + 0.114 * b_normalized)
+        normalized_gray = np.nan_to_num(normalized_gray, nan=0.0, posinf=1.0, neginf=0.0)
+        normalized_gray = np.clip(normalized_gray, 0, 1)
+        normalized_image = (normalized_gray * 255).astype(np.uint8)
 
-# Normalize pixel values [0, 1]
-gray_float = gray.astype(np.float32) / 255.0
-normalized_image_float = normalized_image.astype(np.float32) / 255.0
+        # Compute difference
+        gray_float = gray.astype(np.float32) / 255.0
+        normalized_image_float = normalized_image.astype(np.float32) / 255.0
+        diff = np.abs(gray_float - normalized_image_float)
 
-# Compute difference
-diff = np.abs(gray_float - normalized_image_float)
+        # Gamma correction and alpha blending
+        gamma = 2
+        gamma_diff = np.power(diff, gamma)
+        alpha = 0.5
+        blended = alpha * gamma_diff + (1 - alpha) * gray_float
+        blended_image = np.clip(blended * 255, 0, 255).astype(np.uint8)
 
-# Gamma correction 
-gamma = 2
-gamma_diff = np.power(diff, gamma)
+        # Piecewise contrast enhancement
+        t_optimum = t_optimum_dict.get(image_number)
+        I_min = np.min(blended_image)
+        I_max = np.max(blended_image)
+        piecewise_image = blended_image.copy()
 
-# Alpha blending
-alpha = 0.5
-blended = alpha * gamma_diff + (1 - alpha) * gray_float
-blended_image = np.clip(blended * 255, 0, 255).astype(np.uint8)
+        # Loops through every pixel and applies a piecewise contrast enhancement
+        for i in range(blended_image.shape[0]):
+            for j in range(blended_image.shape[1]):
+                pixel = blended_image[i, j]
+                # if pixel intensity <= (darker)
+                if pixel <= t_optimum:
+                    piecewise_image[i, j] = int((pixel - I_min) * ((t_optimum - I_min) / (t_optimum - I_min)) + I_min)
+                # else if pixel intensity > (brighter)
+                else:
+                    value = (pixel - t_optimum + 1) * ((I_max - t_optimum + 1) / (I_max - t_optimum + 1)) + t_optimum + 1
+                    piecewise_image[i, j] = np.clip(int(value), 0, 255)
 
-# t_optimum from student 1
-if image_number == "01":
-    t_optimum = 103
-elif image_number == "02":
-    t_optimum = 183
-elif image_number == "03":
-    t_optimum = 112
-elif image_number == "04":
-    t_optimum = 97
-elif image_number == "05":
-    t_optimum = 97
-elif image_number == "06":
-    t_optimum = 121
-elif image_number == "07":
-    t_optimum = 112
-elif image_number == "08":
-    t_optimum = 74
-elif image_number == "09":
-    t_optimum = 91
-elif image_number == "10":
-    t_optimum = 101
-elif image_number == "11":
-    t_optimum = 115
+        fig, ax = plt.subplots(1, 4, figsize=(20, 5))
+        ax[0].imshow(gray, cmap="gray")
+        ax[0].set_title("Grayscale Image")
+        ax[0].axis("off")
 
-I_min = np.min(blended_image)
-I_max = np.max(blended_image)
-piecewise_image = blended_image.copy()
+        ax[1].imshow(normalized_image, cmap="gray")
+        ax[1].set_title("Normalized Grayscale Image")
+        ax[1].axis("off")
 
-# piecewise function
-for i in range(blended_image.shape[0]):
-    for j in range(blended_image.shape[1]):
-        pixel = blended_image[i, j]
-        if pixel <= t_optimum:
-            piecewise_image[i, j] = int((pixel - I_min) * ((t_optimum - I_min) / (t_optimum - I_min)) + I_min)
-        else:
-            value = (pixel - t_optimum + 1) * ((I_max - t_optimum + 1) / (I_max - t_optimum + 1)) + t_optimum + 1
-            piecewise_image[i, j] = np.clip(int(value), 0, 255)
+        ax[2].imshow(blended_image, cmap="gray")
+        ax[2].set_title("Blended (Gray + Gamma)")
+        ax[2].axis("off")
 
-fig, ax = plt.subplots(1, 4, figsize=(20, 5))
+        ax[3].imshow(piecewise_image, cmap="gray")
+        ax[3].set_title("Piecewise Image")
+        ax[3].axis("off")
 
-ax[0].imshow(gray, cmap="gray")
-ax[0].set_title("Grayscale Image")
-ax[0].axis("off")
+        plt.tight_layout()
+        plt.show()
 
-ax[1].imshow(normalized_image, cmap="gray")
-ax[1].set_title("Normalized Grayscale Image")
-ax[1].axis("off")
-
-ax[2].imshow(blended_image, cmap="gray")
-ax[2].set_title("Blended (Gray + Gamma)")
-ax[2].axis("off")
-
-ax[3].imshow(piecewise_image, cmap="gray")
-ax[3].set_title("piecewise_image")
-ax[3].axis("off")
-
-plt.tight_layout()
-plt.show()
-
-"""
-grey_image_pil = Image.fromarray(gray)
-grey_image_pil.save('contrast_images/grayscale/11_normal_fundus_grayscale.png')
-
-normalized_image_pil = Image.fromarray(normalized_gray_display)
-normalized_image_pil.save('contrast_images/normalized/11_normal_fundus_normalized.png')
-
-alpha_blend_image_pil = Image.fromarray(blended_image)
-alpha_blend_image_pil.save('contrast_images/alpha_blend/11_normal_fundus_alpha.png')
-
-piecewise_image_pil = Image.fromarray(piecewise_image)
-piecewise_image_pil.save('contrast_images/piecewise/11_normal_fundus_piecewise.png')
-
-"""
+        """
+        base_name = os.path.splitext(filename)[0]
+        Image.fromarray(stretch_contrast(gray)).save(f'contrast_images/grayscale/{base_name}_gray.jpeg')
+        Image.fromarray(stretch_contrast(normalized_image)).save(f'contrast_images/normalized/{base_name}_normalized.jpeg')
+        Image.fromarray(stretch_contrast(blended_image)).save(f'contrast_images/alpha_blend/{base_name}_alpha.jpeg')
+        Image.fromarray(stretch_contrast(piecewise_image)).save(f'contrast_images/piecewise/{base_name}_piecewise.jpeg')
+        """
