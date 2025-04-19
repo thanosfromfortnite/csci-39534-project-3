@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image
 import os
 
+# Enhancement Measure Estimation (EME)
 def calculateEme(image, k1, k2):
     img_arr = np.array(image).astype(np.double)
     rows, cols = img_arr.shape
@@ -34,6 +35,7 @@ def calculateEme(image, k1, k2):
     eme /= (k1 * k2)
     return eme
 
+# Entropy-based EME (EMEE)
 def calculateEmee(image, a, k1, k2):
     img_arr = np.array(image).astype(np.double)
     rows, cols = img_arr.shape
@@ -60,6 +62,7 @@ def calculateEmee(image, a, k1, k2):
     emee /= (k1 * k2)
     return emee
 
+# Visibility (Michelson Contrast)
 def calculateMichelsonContrast(image, k1, k2):
     img_arr = np.array(image).astype(np.double)
     rows, cols = img_arr.shape
@@ -85,6 +88,7 @@ def calculateMichelsonContrast(image, k1, k2):
 
     return visibility
 
+# Average Michelson EME (AME)
 def calculateAme(image, k1, k2):
     img_arr = np.array(image).astype(np.double)
     rows, cols = img_arr.shape
@@ -112,6 +116,7 @@ def calculateAme(image, k1, k2):
     ame /= (k1 * k2 * -1)
     return ame
 
+# Entropy-based AME (AMEE)
 def calculateAmee(image, a, k1, k2):
     img_arr = np.array(image).astype(np.double)
     rows, cols = img_arr.shape
@@ -139,6 +144,7 @@ def calculateAmee(image, a, k1, k2):
     amee /= (k1 * k2 * -1)
     return amee
 
+# values for alpha, k1 and k2 used in calculations
 a = 0.5
 k1 = 10
 k2 = 10
