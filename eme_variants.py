@@ -78,6 +78,9 @@ def calculateMichelsonContrast(image, k1, k2):
             I_max = np.max(block)
             I_min = np.min(block)
 
+            if I_min == 0:
+                I_min = 1
+
             visibility += (I_max - I_min) / (I_max + I_min)
 
     return visibility
@@ -100,7 +103,11 @@ def calculateAme(image, k1, k2):
             I_max = np.max(block)
             I_min = np.min(block)
 
-            ame += np.log((I_max - I_min) / (I_max + I_min))
+            # Conditional statement to avoid divide by zero or log(0) errors
+            if (I_max + I_min) == 0 or (I_max - I_min) <= 0:
+                continue
+            else:
+                ame += np.log((I_max - I_min) / (I_max + I_min))
 
     ame /= (k1 * k2 * -1)
     return ame
@@ -123,7 +130,11 @@ def calculateAmee(image, a, k1, k2):
             I_max = np.max(block)
             I_min = np.min(block)
 
-            amee += np.log(((I_max - I_min) / (I_max + I_min)) ** a)
+            # Conditional statement to avoid divide by zero or log(0) errors
+            if (I_max + I_min) == 0 or (I_max - I_min) <= 0:
+                continue
+            else:
+                amee += np.log(((I_max - I_min) / (I_max + I_min)) ** a)
 
     amee /= (k1 * k2 * -1)
     return amee
