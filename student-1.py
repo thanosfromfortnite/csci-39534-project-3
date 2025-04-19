@@ -2,7 +2,7 @@
     Jesse Han (Acting as Student 1)
     jesse.han53@myhunter.cuny.edu
     CSCI 39534 Project 3 - Retinal Fundus Images
-    Noise Removal Portion
+    Student 1 Portion
     Resources: Kaggle, for Images
                https://www.kaggle.com/datasets/kssanjaynithish03/retinal-fundus-images/data
                Researchgate.net, for 5x5 Gaussian Filter
