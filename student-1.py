@@ -24,39 +24,6 @@ image_dir = 'images/original/'
 grayscale_dir = 'images/grayscale/'
 output_dir = 'student-1/'
 
-# Averaging Filter
-a_filter = [[1.0 / 9.0] * 3] * 3
-# Larger Average Filter
-a_filter_large = [[1.0 / 49] * 7] * 7
-# Gaussian Filter
-g_filter = [
-    [1.0 / 16.0, 2.0 / 16.0, 1.0 / 16.0],
-    [2.0 / 16.0, 4.0 / 16.0, 2.0 / 16.0],
-    [1.0 / 16.0, 2.0 / 16.0, 1.0 / 16.0]
-]
-# Larger Gaussian Filter
-g_filter_large = [
-    [1.0/273, 4.0/273, 7.0/273, 4.0/273, 1.0/273],
-    [4.0/273, 16.0/273, 26.0/273, 16.0/273, 4.0/273],
-    [7.0/273, 26.0/273, 41.0/273, 26.0/273, 7.0/273],
-    [4.0/273, 16.0/273, 26.0/273, 16.0/273, 4.0/273],
-    [1.0/273, 4.0/273, 7.0/273, 4.0/273, 1.0/273]
-]
-
-# Sharpened Filter
-s_filter = [
-    [-1.0/9, -1.0/9, -1.0/9],
-    [-1.0/9, 2.0 - 1.0/9, -1.0/9],
-    [-1.0/9, -1.0/9, -1.0/9]
-]
-
-# Extra Sharpened Filter
-es_filter = [
-    [-2.0/9, -2.0/9, -2.0/9],
-    [-2.0/9, 3.0 - 2.0/9, -2.0/9],
-    [-2.0/9, -2.0/9, -2.0/9]
-]
-
 # Applies a filter from a 2D array.
 def filter_2d_obj(image_obj, filter_2d):
     image_pixels = image.load()
@@ -84,7 +51,7 @@ def eme(image_file, split=10):
     EME = 0
     block_width = width // split
     block_height = height // split
-
+    # Divides the image into multiple blocks of equal width/height
     for k in range(1, split):
         for l in range(1, split):
             width_start = (k-1) * block_width 
@@ -160,6 +127,11 @@ for image_file in image_files:
     print(f"{image_file} base EME: {image_files[image_file][0]}")
     optimal_t = image_files[image_file].index(max(image_files[image_file]))
     optimal_eme[image_file] = (optimal_t, max(image_files[image_file]))
+    plt.plot([i for i in range(1,256)], [j for j in image_files[image_file][1:]])
+    plt.title(f"EME of linear contrast-enchanced {image_file}")
+    plt.xlabel("t")
+    plt.ylabel("EME")
+    plt.show()
     contrast_image = linear_contrast_stretching(image, optimal_t).save(f"{output_dir}optimal-{str(optimal_t)}_{image_file}")
         
 print(f'Process took: {time.time() - start_time:.4f} seconds!')
